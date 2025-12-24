@@ -1,0 +1,92 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using WeddingSite.Data.Models
+@inject IPhotoService PhotoService
+@inject IWebHostEnvironment Env
+@inject WeddingSite.Data.WeddingDbContext DbContext
+@inject NavigationManager Nav
+
+<h3>Upload photos</h3>
+
+<label class="btn btn-primary">
+    Choose photos
+    <InputFile OnChange="OnInputFileChangeInputFile" Multiple="true" style="display:none" />
+</label>
+
+@if (busy)
+{
+    <p>Uploading…</p>
+}
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="mt-2">@message</div>
+}
+@if (errors.Any())
+{
+    <ul class="text-danger">
+        @foreach (var e in errors)
+        {
+            <li>@e</li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter] public EventCallback OnUploaded{ get; set; }
+
+    private bool busy;
+    private string? message;
+    private List<string> errors = new();
+
+    // Allow up to 10 MB per file (adjust as needed)
+    private const long MaxFileSize = 10 * 1024 * 1024;
+
+    private async Task OnInputFileChangeInputFile(InputFileChangeEventArgs e)
+    {
+        errors.Clear();
+        message = null;
+        busy = true;
+
+        try
+        {
+            var files = e.GetMultipleFiles();
+            if (!files.Any())
+            {
+                message = "No files selected.";
+                return;
+            }
+
+            var uploaded = new List<string>();
+
+            foreach (var file in files)
+            {
+                try
+                {
+                    var photo = await PhotoService.SaveAsync(file, MaxFileSize);
+                    uploaded.Add(photo.Path);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"{file.Name}: {ex.Message}");
+                }
+            }
+
+            if (uploaded.Any())
+            {
+                message = $"Uploaded {uploaded.Count} file(s).";
+                if (OnUploaded.HasDelegate)
+                {
+                    await OnUploaded.InvokeAsync(null);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errors.Add($"Unexpected error: {ex.Message}");
+        }
+        finally
+        {
+            busy = false;
+            StateHasChanged();
+        }
+    }
+}

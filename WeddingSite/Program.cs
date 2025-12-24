@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WeddingSite.Components;
 using WeddingSite.Data;
+using WeddingSite.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,8 @@ builder.Services.AddDbContext<WeddingDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddHttpClient();
+
+builder.Services.AddScoped<IPhotoService, PhotoService>();
 
 var app = builder.Build();
 

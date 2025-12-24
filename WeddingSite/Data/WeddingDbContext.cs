@@ -9,7 +9,10 @@ namespace WeddingSite.Data
             : base(options)
         {
         }
+        // Run this in Package Manager Console after changing a model/schema
 
+        // dotnet ef migrations add SyncModel --project WeddingSite --startup-project WeddingSite -o Data/Migrations
+        // dotnet ef database update --project WeddingSite --startup-project WeddingSite
         public DbSet<Guest> Guests { get; set; } = default!;
         public DbSet<RegistryItem> RegistryItems { get; set; } = default!;
         public DbSet<Photo> Photos { get; set; } = default!;

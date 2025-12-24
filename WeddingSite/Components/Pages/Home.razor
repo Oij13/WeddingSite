@@ -1,5 +1,62 @@
 ﻿@page "/"
+@using WeddingSite.Data.Models
+@using Microsoft.EntityFrameworkCore
+@inject WeddingSite.Data.WeddingDbContext DbContext
+@inject IPhotoService PhotoService
+@inject NavigationManager Nav
 
-<PageTitle>Home</PageTitle>
+<h3>Photos</h3>
 
-<h1>Hello, world!</h1>
+<PageTitle>Photos</PageTitle>
+<Upload OnUploaded="RefreshPhotos"></Upload>
+
+
+@if (photos is null)
+{
+    <p>Loading photos…</p>
+}
+else if (!photos.Any())
+{
+    <p>No photos yet.</p>
+}
+else
+{
+    <div class="photo-grid" style="display:flex;flex-wrap:wrap;">
+        @foreach (var p in photos)
+        {
+            <div class="photo-item" style="margin:8px;">
+                <img src="@GetImageUrl(p.Path)" alt="@p.FileName" style="max-width:240px;max-height:240px;object-fit:cover;border-radius:6px;" />
+            </div>
+        }
+    </div>
+}
+
+
+@code {
+    private List<Photo>? photos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        photos = await PhotoService.GetAllAsync();
+    }
+
+
+    private async Task RefreshPhotos()
+    {
+        photos = await PhotoService.GetAllAsync();
+        StateHasChanged();
+    }
+
+    private string GetImageUrl(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        if (Uri.IsWellFormedUriString(path, UriKind.Absolute))
+            return path;
+
+        var baseUri = Nav.BaseUri.TrimEnd('/');
+        var relative = path.TrimStart('/');
+        return $"{baseUri}/{relative}";
+    }
+}
