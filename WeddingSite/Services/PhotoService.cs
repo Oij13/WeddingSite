@@ -12,17 +12,11 @@ namespace WeddingSite.Services
         Task DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     }
-    public class PhotoService : IPhotoService
+    public class PhotoService(WeddingDbContext db, IWebHostEnvironment env) : IPhotoService
     {
-        private readonly WeddingDbContext _db;
-        private readonly IWebHostEnvironment _env;
-        private readonly string[] _allowedContentTypes = new[] { "image/png", "image/jpeg", "image/gif", "image/webp" };
-
-        public PhotoService(WeddingDbContext db, IWebHostEnvironment env)
-        {
-            _db = db;
-            _env = env;
-        }
+        private readonly WeddingDbContext _db = db;
+        private readonly IWebHostEnvironment _env = env;
+        private readonly string[] _allowedContentTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
         public async Task<List<Photo>> GetAllAsync(CancellationToken cancellationToken = default)
         {

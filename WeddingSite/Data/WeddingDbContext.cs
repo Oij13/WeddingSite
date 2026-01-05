@@ -9,7 +9,7 @@ namespace WeddingSite.Data
             : base(options)
         {
         }
-        // Run this in Package Manager Console after changing a model/schema
+        // Run this in Package Manager Console after changing a model/schema only if using VSCode, not VS
 
         // dotnet ef migrations add SyncModel --project WeddingSite --startup-project WeddingSite -o Data/Migrations
         // dotnet ef database update --project WeddingSite --startup-project WeddingSite
