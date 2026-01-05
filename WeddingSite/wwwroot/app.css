@@ -24,6 +24,10 @@ h1:focus {
     outline: none;
 }
 
+h1, h2, h3{
+    font-family: feminine !important; 
+}
+
 .valid.modified:not([type=checkbox]) {
     outline: 1px solid #26b050;
 }

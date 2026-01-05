@@ -1,0 +1,20 @@
+﻿@page "/gallery"
+@inject IPhotoService PhotoService 
+
+<h3 class="text-center fw-bold mb-4 text-primary">GALLERY</h3>
+
+<div class="photo-grid">
+    @foreach(Photo photo in photos)
+    {
+        <img src="@photo.Path" width="750">
+    }
+</div>
+
+@code {
+    private List<Photo> photos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        photos = await PhotoService.GetAllAsync();
+    }
+}
