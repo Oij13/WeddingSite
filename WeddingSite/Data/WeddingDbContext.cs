@@ -21,17 +21,12 @@ namespace WeddingSite.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // simple configuration examples
+            modelBuilder.HasDefaultSchema("public");
+
             modelBuilder.Entity<Guest>()
                 .Property(g => g.Name)
                 .IsRequired()
                 .HasMaxLength(200);
-
-            modelBuilder.Entity<RegistryItem>()
-                .HasOne(ri => ri.Photo)
-                .WithMany()
-                .HasForeignKey(ri => ri.PhotoId)
-                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Photo>()
                 .Property(p => p.Path)

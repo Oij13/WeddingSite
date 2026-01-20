@@ -16,6 +16,5 @@ namespace WeddingSite.Data.Models
 
         [MaxLength(100)]
         public string? ContentType { get; set; }
-
     }
 }
