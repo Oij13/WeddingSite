@@ -1,20 +1,37 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace WeddingSite.Data.Models
+namespace WeddingSite.Data.Models;
+
+public class Guest
 {
-    public class Guest
-    {
-        [Key]
-        public int Id { get; set; }
+    public int Id { get; set; }
 
-        [Required, MaxLength(200)]
-        public string Name { get; set; } = default!;
+    [Required]
+    [MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
 
-        // If you want to allow guests to bring additional people
-        public int PartySize { get; set; } = 1;
+    [Required]
+    [EmailAddress]
+    [MaxLength(200)]
+    public string Email { get; set; } = string.Empty;
 
-        public bool IsAttending { get; set; } = false;
+    [Required]
+    [MaxLength(50)]
+    public string InvitationCode { get; set; } = string.Empty;
 
-        public string? Notes { get; set; }
-    }
+    // How many people can this guest bring (including themselves)
+    public int MaxPartySize { get; set; } = 1;
+
+    // RSVP Response
+    public bool HasRsvped { get; set; }
+    public bool IsAttending { get; set; }
+    public int PartySize { get; set; } = 1; // How many they're actually bringing
+
+    // Optional details
+    [MaxLength(1000)]
+    public string? DietaryRestrictions { get; set; }
+
+    public string? Notes { get; set; }
+
+    public DateTime? RsvpDate { get; set; }
 }

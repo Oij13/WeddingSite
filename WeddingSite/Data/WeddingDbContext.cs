@@ -14,7 +14,6 @@ namespace WeddingSite.Data
         // dotnet ef migrations add SyncModel --project WeddingSite --startup-project WeddingSite -o Data/Migrations
         // dotnet ef database update --project WeddingSite --startup-project WeddingSite
         public DbSet<Guest> Guests { get; set; } = default!;
-        public DbSet<RegistryItem> RegistryItems { get; set; } = default!;
         public DbSet<Photo> Photos { get; set; } = default!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -23,15 +22,25 @@ namespace WeddingSite.Data
 
             modelBuilder.HasDefaultSchema("public");
 
-            modelBuilder.Entity<Guest>()
-                .Property(g => g.Name)
-                .IsRequired()
-                .HasMaxLength(200);
+            modelBuilder.Entity<Guest>(entity =>
+            {
+                // Invitation code must be unique
+                entity.HasIndex(e => e.InvitationCode).IsUnique();
 
-            modelBuilder.Entity<Photo>()
-                .Property(p => p.Path)
-                .IsRequired()
-                .HasMaxLength(500);
+                // Email index for faster lookups
+                entity.HasIndex(e => e.Email);
+            });
+
+            modelBuilder.Entity<Photo>(entity =>
+            {
+                entity.Property(p => p.Url)
+                    .IsRequired()
+                    .HasMaxLength(500);
+
+                entity.Property(p => p.PublicId)
+                    .IsRequired()
+                    .HasMaxLength(200);
+            });
         }
     }
 }

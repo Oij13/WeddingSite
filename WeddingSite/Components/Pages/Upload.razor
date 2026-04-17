@@ -62,7 +62,7 @@
                 try
                 {
                     var photo = await PhotoService.SaveAsync(file, MaxFileSize);
-                    uploaded.Add(photo.Path);
+                    uploaded.Add(photo.Url);
                 }
                 catch (Exception ex)
                 {

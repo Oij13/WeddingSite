@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using WeddingSite.Components;
 using WeddingSite.Data;
 using WeddingSite.Services;
+using CloudinaryDotNet;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +13,11 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddDbContext<WeddingDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Configure Cloudinary
+var cloudinarySettings = builder.Configuration.GetSection("Cloudinary");
+var cloudinary = new Cloudinary(cloudinarySettings["Url"]);
+builder.Services.AddSingleton(cloudinary);
 
 builder.Services.AddHttpClient();
 
