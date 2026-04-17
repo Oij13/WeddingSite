@@ -1,0 +1,173 @@
+﻿@page "/rsvp/{InvitationCode:guid}"
+@using WeddingSite.Data.Models
+@using WeddingSite.Services
+@inject IGuestService GuestService
+@layout EmptyLayout
+
+<PageTitle>RSVP</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    @if (loading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="mt-16">
+            <MudProgressCircular Indeterminate="true" />
+            <MudText>Verifying your invitation…</MudText>
+        </MudStack>
+    }
+    else if (guest is null)
+    {
+        <MudPaper Class="pa-8 text-center" Elevation="2">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Large" Class="mb-3" />
+            <MudText Typo="Typo.h5" Class="mb-2">Invalid Invitation</MudText>
+            <MudText Color="Color.Secondary">This invitation code is not valid. Please check your invite and try again.</MudText>
+        </MudPaper>
+    }
+    else if (submitted)
+    {
+        <MudPaper Class="pa-8 text-center" Elevation="2">
+            <MudText Typo="Typo.h4" Class="mb-3">@(guest.IsAttending ? "Thank you for registering!" : "We'll miss you!")</MudText>
+            <MudText Color="Color.Secondary">
+                @if (guest.IsAttending)
+                {
+                    <span>Thank you, <strong>@guest.Name</strong>! We can't wait to celebrate with you.</span>
+                }
+                else
+                {
+                    <span>Thank you, <strong>@guest.Name</strong>. We're sorry you can't make it.</span>
+                }
+            </MudText>
+        </MudPaper>
+    }
+    else if (alreadyRsvped && !editing)
+    {
+        <MudPaper Class="pa-8 text-center" Elevation="2">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" Class="mb-3" />
+            <MudText Typo="Typo.h5" Class="mb-2">You've already RSVP'd!</MudText>
+            <MudText Color="Color.Secondary" Class="mb-4">
+                @if (guest.IsAttending)
+                {
+                    <span>You're marked as <strong>attending</strong> with a party of <strong>@guest.PartySize</strong>.</span>
+                }
+                else
+                {
+                    <span>You're marked as <strong>not attending</strong>.</span>
+                }
+            </MudText>
+            <MudButton Variant="Variant.Outlined" OnClick="() => editing = true">Change my RSVP</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-8" Elevation="2">
+            <MudText Typo="Typo.h4" Align="Align.Center" Class="fw-bold mb-1">You're Invited!</MudText>
+            <MudText Align="Align.Center" Color="Color.Secondary" Class="mb-6">
+                Hi <strong>@guest.Name</strong>, please fill out your RSVP below.
+            </MudText>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+            }
+
+            <EditForm Model="form" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <MudText Class="mb-2">Will you be attending?</MudText>
+                <MudRadioGroup @bind-Value="form.IsAttending" Class="mb-4">
+                    <MudRadio Value="true" Color="Color.Primary">Joyfully Accepts</MudRadio>
+                    <MudRadio Value="false" Color="Color.Primary">Regretfully Declines</MudRadio>
+                </MudRadioGroup>
+
+                @if (form.IsAttending)
+                {
+                    <MudNumericField @bind-Value="form.PartySize" Label="Number of guests attending (including yourself)"
+                                     Min="1" Max="@guest.MaxPartySize" Variant="Variant.Outlined" Class="mb-4"
+                                     HelperText="@($"You may bring up to {guest.MaxPartySize} guest(s).")" />
+                }
+
+                <MudTextField @bind-Value="form.Notes" Label="Notes" Placeholder="Anything else you'd like us to know?"
+                              Variant="Variant.Outlined" Lines="2" Class="mb-6" />
+
+                <MudStack AlignItems="AlignItems.Center">
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               Size="Size.Large" Disabled="@saving">
+                        @(saving ? "Saving…" : "Submit RSVP")
+                    </MudButton>
+                </MudStack>
+            </EditForm>
+        </MudPaper>
+    }
+</MudContainer>
+
+    @code {
+    [Parameter] public Guid InvitationCode { get; set; }
+
+    private Guest? guest;
+    private RsvpForm form = new();
+    private bool loading = true;
+    private bool saving = false;
+    private bool submitted = false;
+    private bool alreadyRsvped = false;
+    // Only for testing
+    // users should not change their rsvp after initial
+    private bool editing = false;
+    private string? errorMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        guest = await GuestService.GetGuestByInvitationCode(InvitationCode);
+
+        if (guest is not null)
+        {
+            alreadyRsvped = guest.HasRsvped;
+            form.IsAttending = guest.IsAttending;
+            form.PartySize = guest.PartySize > 0 ? guest.PartySize : 1;
+            form.DietaryRestrictions = guest.DietaryRestrictions;
+            form.Notes = guest.Notes;
+        }
+
+        loading = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (guest is null) return;
+
+        saving = true;
+        errorMessage = null;
+
+        try
+        {
+            guest.IsAttending = form.IsAttending;
+            guest.PartySize = form.IsAttending ? Math.Clamp(form.PartySize, 1, guest.MaxPartySize) : 0;
+            guest.DietaryRestrictions = form.DietaryRestrictions;
+            guest.Notes = form.Notes;
+            guest.HasRsvped = true;
+            guest.RsvpDate = DateTime.UtcNow;
+
+            await GuestService.UpdateGuest(guest);
+            editing = false;
+            submitted = true;
+        }
+        catch
+        {
+            errorMessage = "Something went wrong saving your RSVP. Please try again.";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private class RsvpForm
+    {
+        public bool IsAttending { get; set; } = true;
+        [System.ComponentModel.DataAnnotations.Range(1, 20)]
+        public int PartySize { get; set; } = 1;
+        public string? DietaryRestrictions { get; set; }
+        public string? Notes { get; set; }
+    }
+}

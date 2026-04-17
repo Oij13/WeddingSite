@@ -14,15 +14,16 @@ namespace WeddingSite.Services
         Task DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     }
-    public class PhotoService(WeddingDbContext db, Cloudinary cloudinary) : IPhotoService
+    public class PhotoService(IDbContextFactory<WeddingDbContext> factory, Cloudinary cloudinary) : IPhotoService
     {
-        private readonly WeddingDbContext _db = db;
+        private readonly IDbContextFactory<WeddingDbContext> _factory = factory;
         private readonly Cloudinary _cloudinary = cloudinary;
         private readonly string[] _allowedContentTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
         public async Task<List<Photo>> GetAllAsync(CancellationToken cancellationToken = default)
         {
-            return await _db.Photos
+            using var db = await _factory.CreateDbContextAsync(cancellationToken);
+            return await db.Photos
                 .OrderByDescending(p => p.UploadedAt)
                 .ToListAsync(cancellationToken);
         }
@@ -57,18 +58,19 @@ namespace WeddingSite.Services
                 UploadedAt = DateTime.UtcNow
             };
 
-            _db.Photos.Add(photo);
-            await _db.SaveChangesAsync(cancellationToken);
+            using var db = await _factory.CreateDbContextAsync(cancellationToken);
+            db.Photos.Add(photo);
+            await db.SaveChangesAsync(cancellationToken);
 
             return photo;
         }
 
         public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
         {
-            var photo = await _db.Photos.FindAsync(new object[] { id }, cancellationToken);
+            using var db = await _factory.CreateDbContextAsync(cancellationToken);
+            var photo = await db.Photos.FindAsync(new object[] { id }, cancellationToken);
             if (photo is null) return;
 
-            // Delete from Cloudinary
             try
             {
                 var deleteParams = new DeletionParams(photo.PublicId);
@@ -79,8 +81,8 @@ namespace WeddingSite.Services
                 // Continue with database deletion even if Cloudinary delete fails
             }
 
-            _db.Photos.Remove(photo);
-            await _db.SaveChangesAsync(cancellationToken);
+            db.Photos.Remove(photo);
+            await db.SaveChangesAsync(cancellationToken);
         }
     }
 }

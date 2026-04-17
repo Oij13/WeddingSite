@@ -16,8 +16,7 @@ public class Guest
     public string Email { get; set; } = string.Empty;
 
     [Required]
-    [MaxLength(50)]
-    public string InvitationCode { get; set; } = string.Empty;
+    public Guid InvitationCode { get; set; }
 
     // How many people can this guest bring (including themselves)
     public int MaxPartySize { get; set; } = 1;

@@ -1,0 +1,221 @@
+@page "/admin/guests"
+@inject IGuestService GuestService
+@rendermode InteractiveServer
+
+<PageTitle>Admin — Guests</PageTitle>
+
+<MudText Typo="Typo.h4" Class="fw-bold mb-4">Guest Management</MudText>
+
+@if (!string.IsNullOrEmpty(statusMessage))
+{
+    <MudAlert Severity="@(statusSuccess ? Severity.Success : Severity.Error)" ShowCloseIcon="true"
+              CloseIconClicked="() => statusMessage = null" Class="mb-4">
+        @statusMessage
+    </MudAlert>
+}
+
+<MudCard Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">@(editingGuest is null ? "Add Guest" : $"Editing: {editingGuest.Name}")</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <EditForm Model="form" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="form.Name" Label="Name" Placeholder="Full name"
+                                  For="() => form.Name" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="form.Email" Label="Email" Placeholder="email@example.com"
+                                  For="() => form.Email" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="form.MaxPartySize" Label="Max Party Size"
+                                     Min="1" Max="20" For="() => form.MaxPartySize" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+            <MudStack Row="true" Class="mt-4" Spacing="2">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@saving">
+                    @(saving ? "Saving…" : (editingGuest is null ? "Add Guest" : "Save Changes"))
+                </MudButton>
+                @if (editingGuest is not null)
+                {
+                    <MudButton Variant="Variant.Outlined" OnClick="CancelEdit">Cancel</MudButton>
+                }
+            </MudStack>
+        </EditForm>
+    </MudCardContent>
+</MudCard>
+
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Guest List (@guests.Count)</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent Class="pa-0">
+        @if (guests.Count == 0)
+        {
+            <MudText Class="pa-4" Color="Color.Secondary">No guests added yet.</MudText>
+        }
+        else
+        {
+            <MudTable Items="guests" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Invite Code</MudTh>
+                    <MudTh>Max Party</MudTh>
+                    <MudTh>RSVP</MudTh>
+                    <MudTh>Attending</MudTh>
+                    <MudTh>Party Size</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Name</MudTd>
+                    <MudTd>@context.Email</MudTd>
+                    <MudTd><MudText Typo="Typo.body2" Style="font-family:monospace">@context.InvitationCode</MudText></MudTd>
+                    <MudTd>@context.MaxPartySize</MudTd>
+                    <MudTd>
+                        @if (context.HasRsvped)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Yes</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="Color.Default" Size="Size.Small">Pending</MudChip>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        @if (context.HasRsvped)
+                        {
+                            @if (context.IsAttending)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" Class="me-1" />
+                                <span>Attending</span>
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" Class="me-1" />
+                                <span>Declined</span>
+                            }
+                        }
+                    </MudTd>
+                    <MudTd>@(context.HasRsvped && context.IsAttending ? context.PartySize.ToString() : "—")</MudTd>
+                    <MudTd Style="text-align:right">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="() => StartEdit(context)" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                       OnClick="() => DeleteGuest(context)" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<Guest> guests = [];
+    private GuestForm form = new();
+    private Guest? editingGuest;
+    private bool saving = false;
+    private string? statusMessage;
+    private bool statusSuccess = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGuests();
+    }
+
+    private async Task LoadGuests()
+    {
+        guests = await GuestService.GetGuests();
+    }
+
+    private void StartEdit(Guest guest)
+    {
+        editingGuest = guest;
+        form = new GuestForm
+        {
+            Name = guest.Name,
+            Email = guest.Email,
+            MaxPartySize = guest.MaxPartySize
+        };
+    }
+
+    private void CancelEdit()
+    {
+        editingGuest = null;
+        form = new();
+    }
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        try
+        {
+            if (editingGuest is null)
+            {
+                await GuestService.AddGuest(new Guest
+                {
+                    Name = form.Name,
+                    Email = form.Email,
+                    InvitationCode = Guid.NewGuid(),
+                    MaxPartySize = form.MaxPartySize
+                });
+            }
+            else
+            {
+                editingGuest.Name = form.Name;
+                editingGuest.Email = form.Email;
+                editingGuest.MaxPartySize = form.MaxPartySize;
+                await GuestService.UpdateGuest(editingGuest);
+            }
+
+            await LoadGuests();
+            SetStatus(editingGuest is null ? $"Guest '{form.Name}' added." : $"Guest '{form.Name}' updated.", success: true);
+            editingGuest = null;
+            form = new();
+        }
+        catch (Exception)
+        {
+            SetStatus("Failed to save guest. The invitation code may already be in use.", success: false);
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task DeleteGuest(Guest guest)
+    {
+        await GuestService.DeleteGuest(guest.Id);
+        await LoadGuests();
+        SetStatus($"Guest '{guest.Name}' deleted.", success: true);
+    }
+
+    private void SetStatus(string message, bool success)
+    {
+        statusMessage = message;
+        statusSuccess = success;
+    }
+
+    private class GuestForm
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        [System.ComponentModel.DataAnnotations.MaxLength(200)]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Range(1, 20)]
+        public int MaxPartySize { get; set; } = 1;
+    }
+}
